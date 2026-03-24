@@ -46,5 +46,13 @@ pipeline {
                 '''
             }
         }
+         stage('Deploy to Kubernetes') {
+            steps {
+                sh '''
+                    sed -i "s/latest/${IMAGE_TAG}/g" deployment.yml
+                    kubectl apply -f deployment.yml
+                '''
+            }
+        }
     }
 }
