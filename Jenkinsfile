@@ -50,7 +50,7 @@ pipeline {
          stage('Deploy to Kubernetes') {
             steps {
                 sh '''
-                    sed -i "s/latest/${IMAGE_TAG}/g" deployment.yml
+                    kubectl set image deployment/myntra-deployment myntra=${IMAGE_NAME}:${IMAGE_TAG} --record
                     kubectl apply -f deployment.yml
                     kubectl apply -f service.yml
                 '''
