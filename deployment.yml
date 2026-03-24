@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myntra-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myntra
+  template:
+    metadata:
+      labels:
+        app: myntra
+    spec:
+      containers:
+      - name: myntra
+        image: satyasaia99/myntra:latest
+        ports:
+        - containerPort: 8080
+        imagePullPolicy: Always
