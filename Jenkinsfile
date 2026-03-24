@@ -2,45 +2,49 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB = 'vijay3247/myntra'   // change to your DockerHub repo
-        DOCKER_CREDENTIALS = credentials('dockerhub-credentials') // Jenkins credentials ID
+        DOCKERHUB_CREDENTIALS = 'Docker' // Replace with your Jenkins DockerHub credentials ID
+        IMAGE_NAME = 'satyasaia99/myntra'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/vijay254452/myntra.git'
+               git branch: 'main', url: 'https://github.com/SatyasaiA99/myntrajava.git'
             }
         }
 
         stage('Build WAR') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh 'mvn clean package'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_HUB:latest .'
+                sh "docker build -t ${IMAGE_NAME}:latest ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withDockerRegistry([credentialsId: 'dockerhub-credentials', url: '']) {
-                    sh 'docker push $DOCKER_HUB:latest'
+                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push ${IMAGE_NAME}:latest
+                        docker logout
+                    '''
                 }
             }
         }
 
-        stage('Deploy Local Container') {
+        stage('Run Container') {
             steps {
                 sh '''
-                docker rm -f myntra || true
-                docker run -d --name myntra -p 8777:8080 $DOCKER_HUB:latest
+                    docker stop myntra || true
+                    docker rm myntra|| true
+                    docker run -d -p 5656:8080 --name myntra ${IMAGE_NAME}:latest
                 '''
             }
         }
     }
 }
-
