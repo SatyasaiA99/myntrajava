@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: myntra-service
 spec:
-  type: NodePort            # Change to LoadBalancer if in cloud
+  type: LoadBalancer          
   selector:
     app: myntra
   ports:
-    - port: 80
-      targetPort: 8080
-      nodePort: 30004
+    - port: 80               
+      targetPort: 8080       
+      
