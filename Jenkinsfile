@@ -48,13 +48,16 @@ pipeline {
             }
         }
          stage('Deploy to Kubernetes') {
-            steps {
-                sh '''
-                    kubectl set image deployment/myntra-deployment myntra=${IMAGE_NAME}:${IMAGE_TAG} --record
-                    kubectl rollout status deployment/myntra-deployment
-                    kubectl apply -f service.yml
-                '''
-            }
+    steps {
+        withEnv(["KUBECONFIG=/var/lib/jenkins/.kube/config"]) {
+            sh """
+                kubectl apply -f k8s/deployment.yml
+                kubectl set image deployment/myntra-deployment myntra=${IMAGE_NAME}:${IMAGE_TAG}
+                kubectl rollout status deployment/myntra-deployment
+                kubectl apply -f k8s/service.yml
+            """
         }
+    }
+}
     }
 }
