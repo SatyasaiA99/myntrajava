@@ -52,7 +52,7 @@ pipeline {
                 sh '''
                     kubectl set image deployment/myntra-deployment myntra=${IMAGE_NAME}:${IMAGE_TAG} --record
                     kubectl rollout status deployment/myntra-deployment
-                    kubectl apply -f k8s/service.yml
+                    kubectl apply -f service.yml
                 '''
             }
         }
