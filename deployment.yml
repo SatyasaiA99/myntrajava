@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: myntra
-        image: satyasaia99/myntra:latest
+        image: satyasaia99/myntra:v1.6
         ports:
         - containerPort: 8080
         imagePullPolicy: Always
