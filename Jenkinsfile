@@ -105,7 +105,7 @@ pipeline {
 
         success {
             emailext(
-                to: 'mr.siddu1432@gmail.com',
+                to: 'saiankam69@gmail.com',
                 subject: "✅ SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}",
                 body: """
                 <h2>Deployment Successful</h2>
@@ -123,7 +123,7 @@ pipeline {
 
         failure {
             emailext(
-                to: 'mr.siddu1432@gmail.com',
+                to: 'saiankam69@gmail.com',
                 subject: "❌ FAILED: ${JOB_NAME} #${BUILD_NUMBER}",
                 body: """
                 <h2>Deployment Failed</h2>
