@@ -3,16 +3,14 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = 'Docker'
-        AWS_CREDENTIALS = 'aws-creds'
         IMAGE_NAME = 'satyasaia99/myntra'
-        REGION = 'us-east-1'
-        CLUSTER_NAME = 'mycluster20'
         IMAGE_TAG = "v1.${BUILD_NUMBER}"
+        KUBECONFIG = "/var/lib/jenkins/.kube/config"
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/SatyasaiA99/myntrajava.git'
             }
@@ -26,8 +24,10 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
+                sh """
+                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                """
             }
         }
 
@@ -41,51 +41,92 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${IMAGE_NAME}:latest
-                        docker logout
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_NAME}:latest
+                    docker logout
                     '''
                 }
             }
         }
 
-        stage('Deploy to Kubernetes (EKS)') {
+        stage('Deploy to Local Kubernetes') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDENTIALS}"
-                ]]) {
-                    sh '''
-                        aws eks update-kubeconfig --region ${REGION} --name ${CLUSTER_NAME}
-                        kubectl apply -f deployment.yml
-                        kubectl apply -f service.yml
-                        kubectl set image deployment/myntra-deploy myntra-container=${IMAGE_NAME}:${IMAGE_TAG}
-                        kubectl rollout status deployment/myntra-deploy
-                    '''
-                }
+                sh '''
+                echo "Setting kubeconfig..."
+                export KUBECONFIG=/var/lib/jenkins/.kube/config
+
+                echo "Checking cluster..."
+                kubectl get nodes
+
+                echo "Deploying application..."
+                kubectl apply -f deployment.yml
+                kubectl apply -f service.yml
+
+                echo "Updating image..."
+                kubectl set image deployment/myntra-deploy myntra-container=${IMAGE_NAME}:${IMAGE_TAG}
+
+                echo "Waiting for rollout..."
+                kubectl rollout status deployment/myntra-deploy
+                '''
+            }
+        }
+
+        stage('Get Application URL') {
+            steps {
+                sh '''
+                export KUBECONFIG=/var/lib/jenkins/.kube/config
+
+                echo "Fetching service URL..."
+
+                URL=$(kubectl get svc myntra-service -o jsonpath='{.spec.clusterIP}')
+
+                echo "===================================="
+                echo "App Internal URL: http://$URL"
+                echo "===================================="
+                '''
             }
         }
     }
 
     post {
-        always {
+
+        success {
             emailext(
                 to: 'mr.siddu1432@gmail.com',
-                subject: "Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                subject: "✅ SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}",
                 body: """
-Build Status: ${currentBuild.currentResult}
+                <h2>Deployment Successful</h2>
 
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}
+                <b>Project:</b> ${JOB_NAME} <br>
+                <b>Build:</b> #${BUILD_NUMBER} <br>
+                <b>Status:</b> SUCCESS ✅ <br><br>
 
-Cluster: ${CLUSTER_NAME}
-Region: ${REGION}
+                <b>Docker Image:</b> ${IMAGE_NAME}:${IMAGE_TAG} <br><br>
 
-Check Details: ${env.BUILD_URL}
-"""
+                Check Console: ${BUILD_URL}
+                """
             )
+        }
+
+        failure {
+            emailext(
+                to: 'mr.siddu1432@gmail.com',
+                subject: "❌ FAILED: ${JOB_NAME} #${BUILD_NUMBER}",
+                body: """
+                <h2>Deployment Failed</h2>
+
+                <b>Project:</b> ${JOB_NAME} <br>
+                <b>Build:</b> #${BUILD_NUMBER} <br>
+                <b>Status:</b> FAILURE ❌ <br><br>
+
+                Check Logs: ${BUILD_URL}
+                """
+            )
+        }
+
+        always {
+            echo "Pipeline execution completed."
         }
     }
 }
