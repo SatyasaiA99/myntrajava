@@ -50,30 +50,31 @@ pipeline {
             }
         }
 
-        stage('Deploy to Local Kubernetes') {
+        stage('Deploy to Kubernetes') {
             steps {
                 sh '''
-                echo "===== DEBUG INFO ====="
+                echo "===== VALIDATION ====="
                 whoami
-                echo $KUBECONFIG
-                ls -l $KUBECONFIG
 
-                echo "===== Setting kubeconfig ====="
-                export KUBECONFIG=/var/lib/jenkins/.kube/config
+                if [ ! -f "$KUBECONFIG" ]; then
+                  echo "❌ kubeconfig not found!"
+                  exit 1
+                fi
 
-                echo "===== Checking cluster ====="
-                kubectl config get-contexts
+                echo "===== USING KUBECONFIG ====="
+                export KUBECONFIG=$KUBECONFIG
+
                 kubectl config use-context minikube
                 kubectl get nodes
 
-                echo "===== Deploying application ====="
+                echo "===== DEPLOY ====="
                 kubectl apply -f deployment.yml
                 kubectl apply -f service.yml
 
-                echo "===== Updating image ====="
+                echo "===== UPDATE IMAGE ====="
                 kubectl set image deployment/myntra-deploy myntra-container=${IMAGE_NAME}:${IMAGE_TAG}
 
-                echo "===== Waiting for rollout ====="
+                echo "===== ROLLOUT ====="
                 kubectl rollout status deployment/myntra-deploy --timeout=120s
                 '''
             }
@@ -82,15 +83,11 @@ pipeline {
         stage('Get Application URL') {
             steps {
                 sh '''
-                export KUBECONFIG=/var/lib/jenkins/.kube/config
+                export KUBECONFIG=$KUBECONFIG
 
-                echo "===== Fetching Service Details ====="
                 kubectl get svc myntra-service
 
-                echo "===== Getting Node IP ====="
                 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
-
-                echo "===== Getting NodePort ====="
                 NODE_PORT=$(kubectl get svc myntra-service -o jsonpath='{.spec.ports[0].nodePort}')
 
                 echo "===================================="
@@ -106,34 +103,16 @@ pipeline {
         success {
             emailext(
                 to: 'saiankam69@gmail.com',
-                subject: "✅ SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}",
-                body: """
-                <h2>Deployment Successful</h2>
-
-                <b>Project:</b> ${JOB_NAME} <br>
-                <b>Build:</b> #${BUILD_NUMBER} <br>
-                <b>Status:</b> SUCCESS ✅ <br><br>
-
-                <b>Docker Image:</b> ${IMAGE_NAME}:${IMAGE_TAG} <br><br>
-
-                Check Console: ${BUILD_URL}
-                """
+                subject: "SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}",
+                body: "Deployment Successful. Check: ${BUILD_URL}"
             )
         }
 
         failure {
             emailext(
                 to: 'saiankam69@gmail.com',
-                subject: "❌ FAILED: ${JOB_NAME} #${BUILD_NUMBER}",
-                body: """
-                <h2>Deployment Failed</h2>
-
-                <b>Project:</b> ${JOB_NAME} <br>
-                <b>Build:</b> #${BUILD_NUMBER} <br>
-                <b>Status:</b> FAILURE ❌ <br><br>
-
-                Check Logs: ${BUILD_URL}
-                """
+                subject: "FAILED: ${JOB_NAME} #${BUILD_NUMBER}",
+                body: "Deployment Failed. Check: ${BUILD_URL}"
             )
         }
 
