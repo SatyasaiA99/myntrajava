@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'Docker' // Replace with your Jenkins DockerHub credentials ID
+        DOCKERHUB_CREDENTIALS = 'Docker' // Jenkins DockerHub credentials ID
         IMAGE_NAME = 'satyasaia99/myntra'
         EMAIL_RECIPIENT = 'saiankam69@gmail.com'
     }
@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-               git branch: 'main', url: 'https://github.com/SatyasaiA99/myntrajava.git'
+                git branch: 'main', url: 'https://github.com/SatyasaiA99/myntrajava.git'
             }
         }
 
@@ -42,33 +42,35 @@ pipeline {
             steps {
                 sh '''
                     docker stop myntra || true
-                    docker rm myntra|| true
+                    docker rm myntra || true
                     docker run -d -p 5656:8080 --name myntra ${IMAGE_NAME}:latest
                 '''
             }
         }
+
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh '''
-                    kubectl apply -f deployment.yml
-                    kubectl apply -f service.yml
+                        kubectl apply -f deployment.yml
+                        kubectl apply -f service.yml
                     '''
                 }
             }
         }
-    }
+    } // end of stages
+
     post {
         success {
             mail to: "${EMAIL_RECIPIENT}",
                  subject: "✅ Jenkins Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                  body: "The Jenkins build ${env.JOB_NAME} #${env.BUILD_NUMBER} was successful.\nCheck details at: ${env.BUILD_URL}"
         }
+
         failure {
             mail to: "${EMAIL_RECIPIENT}",
                  subject: "❌ Jenkins Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                  body: "The Jenkins build ${env.JOB_NAME} #${env.BUILD_NUMBER} failed.\nCheck details at: ${env.BUILD_URL}"
         }
     }
-}
 }
