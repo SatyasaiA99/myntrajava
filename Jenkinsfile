@@ -50,16 +50,6 @@ pipeline {
             }
         }
 
-        stage('Run Container (Optional Test)') {
-            steps {
-                sh '''
-                    docker stop myntra || true
-                    docker rm myntra || true
-                    docker run -d -p 5656:8080 --name myntra ${IMAGE_NAME}:${IMAGE_TAG}
-                '''
-            }
-        }
-
         stage('Deploy to Kubernetes (EKS)') {
             steps {
                 withCredentials([[
@@ -68,7 +58,6 @@ pipeline {
                 ]]) {
                     sh '''
                         aws eks update-kubeconfig --region ${REGION} --name ${CLUSTER_NAME}
-                        kubectl get nodes
                         kubectl apply -f deployment.yml
                         kubectl apply -f service.yml
                         kubectl set image deployment/myntra-deploy myntra-container=${IMAGE_NAME}:${IMAGE_TAG}
@@ -80,32 +69,23 @@ pipeline {
     }
 
     post {
-        success {
-            mail to: 'mr.siddu1432@gmail.com',
-                 subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: """
-✅ Build Completed Successfully!
+        always {
+            emailext(
+                to: 'mr.siddu1432@gmail.com',
+                subject: "Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+Build Status: ${currentBuild.currentResult}
 
 Project: ${env.JOB_NAME}
 Build Number: ${env.BUILD_NUMBER}
 Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}
+
 Cluster: ${CLUSTER_NAME}
+Region: ${REGION}
 
-Details: ${env.BUILD_URL}
+Check Details: ${env.BUILD_URL}
 """
-        }
-
-        failure {
-            mail to: 'mr.siddu1432@gmail.com',
-                 subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: """
-❌ Build Failed!
-
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-
-Check logs: ${env.BUILD_URL}
-"""
+            )
         }
     }
 }
