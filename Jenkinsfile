@@ -51,7 +51,7 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                withEnv(["KUBECONFIG=${kubeconfig}"]) {
                     sh '''
                         # Apply deployment and service manifests
                         kubectl apply -f deployment.yml
