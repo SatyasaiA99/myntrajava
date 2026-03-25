@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = 'Docker' // Replace with your Jenkins DockerHub credentials ID
         IMAGE_NAME = 'satyasaia99/myntra'
+        EMAIL_RECIPIENT = 'saiankam69@gmail.com'
     }
 
     stages {
@@ -57,4 +58,17 @@ pipeline {
             }
         }
     }
+    post {
+        success {
+            mail to: "${EMAIL_RECIPIENT}",
+                 subject: "✅ Jenkins Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins build ${env.JOB_NAME} #${env.BUILD_NUMBER} was successful.\nCheck details at: ${env.BUILD_URL}"
+        }
+        failure {
+            mail to: "${EMAIL_RECIPIENT}",
+                 subject: "❌ Jenkins Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins build ${env.JOB_NAME} #${env.BUILD_NUMBER} failed.\nCheck details at: ${env.BUILD_URL}"
+        }
+    }
+}
 }
