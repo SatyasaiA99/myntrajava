@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'Docker'   // Jenkins DockerHub credentials ID
-        AWS_CREDENTIALS = 'aws-creds'      // Jenkins AWS credentials ID
+        DOCKERHUB_CREDENTIALS = 'Docker'
+        AWS_CREDENTIALS = 'aws-creds'
         IMAGE_NAME = 'satyasaia99/myntra'
         REGION = 'us-east-1'
-        CLUSTER_NAME = 'mycluster20'         // 🔁 change to your EKS cluster name
+        CLUSTER_NAME = 'mycluster20'
         IMAGE_TAG = "v1.${BUILD_NUMBER}"
     }
 
@@ -67,20 +67,11 @@ pipeline {
                     credentialsId: "${AWS_CREDENTIALS}"
                 ]]) {
                     sh '''
-                        # Configure kubeconfig dynamically
                         aws eks update-kubeconfig --region ${REGION} --name ${CLUSTER_NAME}
-
-                        # Verify cluster access
                         kubectl get nodes
-
-                        # Deploy application
                         kubectl apply -f deployment.yml
                         kubectl apply -f service.yml
-
-                        # Update image in deployment (important for new builds)
                         kubectl set image deployment/myntra-deploy myntra-container=${IMAGE_NAME}:${IMAGE_TAG}
-
-                        # Check rollout
                         kubectl rollout status deployment/myntra-deploy
                     '''
                 }
@@ -90,10 +81,31 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline executed successfully!"
+            mail to: 'mr.siddu1432@gmail.com',
+                 subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: """
+✅ Build Completed Successfully!
+
+Project: ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}
+Cluster: ${CLUSTER_NAME}
+
+Details: ${env.BUILD_URL}
+"""
         }
+
         failure {
-            echo "❌ Pipeline failed. Check logs."
+            mail to: 'mr.siddu1432@gmail.com',
+                 subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: """
+❌ Build Failed!
+
+Project: ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+
+Check logs: ${env.BUILD_URL}
+"""
         }
     }
 }
