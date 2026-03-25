@@ -6,7 +6,7 @@ pipeline {
         AWS_CREDENTIALS = 'aws-creds'      // Jenkins AWS credentials ID
         IMAGE_NAME = 'satyasaia99/myntra'
         REGION = 'us-east-1'
-        CLUSTER_NAME = 'mycluster'         // 🔁 change to your EKS cluster name
+        CLUSTER_NAME = 'mycluster20'         // 🔁 change to your EKS cluster name
         IMAGE_TAG = "v1.${BUILD_NUMBER}"
     }
 
