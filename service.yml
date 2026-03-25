@@ -7,6 +7,6 @@ spec:
   selector:
     app: myntra
   ports:
-    - port: 80               
+    - port: 5656               
       targetPort: 8080       
       
