@@ -53,21 +53,28 @@ pipeline {
         stage('Deploy to Local Kubernetes') {
             steps {
                 sh '''
-                echo "Setting kubeconfig..."
+                echo "===== DEBUG INFO ====="
+                whoami
+                echo $KUBECONFIG
+                ls -l $KUBECONFIG
+
+                echo "===== Setting kubeconfig ====="
                 export KUBECONFIG=/var/lib/jenkins/.kube/config
 
-                echo "Checking cluster..."
+                echo "===== Checking cluster ====="
+                kubectl config get-contexts
+                kubectl config use-context minikube
                 kubectl get nodes
 
-                echo "Deploying application..."
+                echo "===== Deploying application ====="
                 kubectl apply -f deployment.yml
                 kubectl apply -f service.yml
 
-                echo "Updating image..."
+                echo "===== Updating image ====="
                 kubectl set image deployment/myntra-deploy myntra-container=${IMAGE_NAME}:${IMAGE_TAG}
 
-                echo "Waiting for rollout..."
-                kubectl rollout status deployment/myntra-deploy
+                echo "===== Waiting for rollout ====="
+                kubectl rollout status deployment/myntra-deploy --timeout=120s
                 '''
             }
         }
@@ -77,12 +84,17 @@ pipeline {
                 sh '''
                 export KUBECONFIG=/var/lib/jenkins/.kube/config
 
-                echo "Fetching service URL..."
+                echo "===== Fetching Service Details ====="
+                kubectl get svc myntra-service
 
-                URL=$(kubectl get svc myntra-service -o jsonpath='{.spec.clusterIP}')
+                echo "===== Getting Node IP ====="
+                NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+
+                echo "===== Getting NodePort ====="
+                NODE_PORT=$(kubectl get svc myntra-service -o jsonpath='{.spec.ports[0].nodePort}')
 
                 echo "===================================="
-                echo "App Internal URL: http://$URL"
+                echo "Application URL: http://$NODE_IP:$NODE_PORT"
                 echo "===================================="
                 '''
             }
